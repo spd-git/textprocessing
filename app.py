@@ -1,6 +1,7 @@
 from flask import Flask
 from flask import jsonify
 from flask import request
+from pprint import pprint
 
 
 app = Flask(__name__)
@@ -37,7 +38,8 @@ def endpoint():
     response = jsonify(response_object)
     response.status_code = 200
     print('Endpoint OK')
-    print(json_object)
+    pprint(json_object)
+    pprint(request)
     return response
 
 
