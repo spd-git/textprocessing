@@ -26,7 +26,18 @@ def index():
     response = jsonify(response_object)
     response.status_code = 200
     print('Default OK')
-    return response\
+    return response
+
+@app.route('/gettime', methods=['GET'])
+def gettime():
+    """
+    Does Health Check
+    """
+    response_object = {"Hello":"World", "success": "1","project":"ritiksparser"}
+    response = jsonify(response_object)
+    response.status_code = 200
+    print('Default OK')
+    return response
 
 @app.route('/endpoint', methods=['POST'])
 def endpoint():
