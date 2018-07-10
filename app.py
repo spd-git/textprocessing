@@ -2,9 +2,22 @@ from flask import Flask
 from flask import jsonify
 from flask import request
 from pprint import pprint
+import time
 
 
 app = Flask(__name__)
+
+
+
+@app.before_first_request
+def load_huge_file():
+
+    global time1
+    global time2
+    global time3
+    time1 = 0
+    time2 = 0
+    time3 = 0
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -33,7 +46,10 @@ def gettime():
     """
     Does Health Check
     """
-    response_object = {"Hello":"World", "success": "1","project":"ritiksparser"}
+    global time1
+    global time2
+    global time3
+    response_object = {"time1":time1, "time2": time2,"time3":time3}
     response = jsonify(response_object)
     response.status_code = 200
     print('Default OK')
@@ -51,6 +67,12 @@ def endpoint():
     print('Endpoint OK')
     pprint(json_object)
     pprint(request)
+    global time1
+    global time2
+    global time3
+    time1 = time2
+    time2 = time3
+    time3 = time.time()
     return response
 
 
