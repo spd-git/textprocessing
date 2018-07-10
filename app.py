@@ -7,11 +7,12 @@ import time
 
 app = Flask(__name__)
 
-
+global time1
+global time2
+global time3
 
 @app.before_first_request
 def load_huge_file():
-
     global time1
     global time2
     global time3
