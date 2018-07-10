@@ -1,5 +1,7 @@
 from flask import Flask
 from flask import jsonify
+from flask import request
+
 
 app = Flask(__name__)
 
@@ -22,7 +24,20 @@ def index():
     response_object = {"Hello":"World", "success": "1","project":"ritiksparser"}
     response = jsonify(response_object)
     response.status_code = 200
-    print('Health OK')
+    print('Default OK')
+    return response\
+
+@app.route('/endpoint', methods=['POST'])
+def endpoint():
+    """
+    Does Health Check
+    """
+    json_object = request.get_json()
+    response_object = {"endpoint":"endpoint","project":"ritiksparser"}
+    response = jsonify(response_object)
+    response.status_code = 200
+    print('Endpoint OK')
+    print(json_object)
     return response
 
 
