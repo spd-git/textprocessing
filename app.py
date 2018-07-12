@@ -1,25 +1,53 @@
 from flask import Flask
 from flask import jsonify
 from flask import request
-from pprint import pprint
-import time
 import random
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from nltk.tokenize import wordpunct_tokenize
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer
+from collections import Counter
+from nltk.tokenize import sent_tokenize
+from watson_developer_cloud import PersonalityInsightsV3
+from google.cloud import language
+import numpy as np
+import pickle
+import pandas as pd
+import os
 
 
 app = Flask(__name__)
 
-global time1
-global time2
-global time3
+
 
 @app.before_first_request
 def load_huge_file():
-    global time1
-    global time2
-    global time3
-    time1 = 0
-    time2 = 0
-    time3 = 0
+    credentials()
+    global tot_words
+    tot_words = np.load('Total_list_words.npy')
+    global mean
+    mean = np.load('Mean_normalization_parameters.npy')
+    global std
+    std = np.load('Std_normalization_parameters.npy')
+    global lr
+    lr = pickle.load(open('Logistic_model_weights.sav', 'rb'))
+    global knn
+    knn = pickle.load(open('KNN_model_n_value.sav', 'rb'))
+    # Do some things and assign data from a large file to loaded_data
+    print("Model object loaded!")
+    # objects = []
+    # with (open(model_path, "rb")) as openfile:
+    #     while True:
+    #         try:
+    #             objects.append(pickle.load(openfile))
+    #         except EOFError:
+    #             break
+    # global clf
+    # clf = objects[0]
+
 
 @app.route('/health', methods=['GET'])
 def health():
@@ -41,40 +69,6 @@ def index():
     response = jsonify(response_object)
     response.status_code = 200
     print('Default OK')
-    return response
-
-@app.route('/gettime', methods=['GET'])
-def gettime():
-    """
-    Does Health Check
-    """
-    global time1
-    global time2
-    global time3
-    response_object = {"time1":time1, "time2": time2,"time3":time3}
-    response = jsonify(response_object)
-    response.status_code = 200
-    print('Default OK')
-    return response
-
-@app.route('/endpoint', methods=['POST'])
-def endpoint():
-    """
-    Does Health Check
-    """
-    json_object = request.get_json()
-    response_object = {"endpoint":"endpoint","project":"ritiksparser"}
-    response = jsonify(response_object)
-    response.status_code = 200
-    print('Endpoint OK')
-    pprint(json_object)
-    pprint(request)
-    global time1
-    global time2
-    global time3
-    time1 = time2
-    time2 = time3
-    time3 = time.time()
     return response
 
 @app.route('/getdummuystats', methods=['POST'])
@@ -722,6 +716,161 @@ def getdummuystats():
     response.status_code = 200
     response.headers['Access-Control-Allow-Origin'] = '*'
     return response
+
+@app.route('/predict', methods=['POST'])
+def predict():
+    """
+    Does predict
+    """
+    json_object = request.get_json()
+
+    response_object = predict_api('a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a '
+                                  'a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a '
+                                  'a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a '
+                                    'a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a '
+                                  'a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a '
+                                    'a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a '
+                                  'a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a a '
+                                  'a a a a a a a a a a a a a a a a a' + json_object['text'])
+
+    response = jsonify(response_object)
+    response.status_code = 200
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
+
+
+def credentials():
+    location = "/su.json"
+    # os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = location
+
+
+def logistic_model(x, y=1, train=False):
+    # if train:
+    #     score_prev = -1
+    #     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+    #     lambda_set = np.linspace(0.5, 10, 15)
+    #     for lambo in lambda_set:
+    #         lr = LogisticRegression(max_iter=100, tol=0.01, C=(1 / lambo))
+    #         lr.fit(x_train, y_train)
+    #         score = lr.score(x_test, y_test)
+    #         if score > score_prev:
+    #             score_prev = score
+    #             pickle.dump(lr, open('Logistic_model_weights.sav', 'wb'))
+    # else:
+    #     global lr
+    #     return lr.predict_proba(x)[1]
+    return lr.predict_proba(x)[0][1]
+
+
+def knn_model(x, y=1, train=False):
+    # if train:
+    #     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2, random_state=42)
+    #     score_prev = -1
+    #     nearest_count = [i for i in range(1, 10)]
+    #     for nearest in nearest_count:
+    #         knn = KNeighborsClassifier(n_neighbors=nearest)
+    #         knn.fit(x_train, y_train)
+    #         score = knn.score(x_test, y_test)
+    #         if score > score_prev:
+    #             score_prev = score
+    #             pickle.dump(knn, open('KNN_model_n_value.sav', 'wb'))
+    # else:
+    #     knn = pickle.load(open('KNN_model_n_value.sav', 'rb'))
+    #     return knn.predict_proba(x)[1]
+    return knn.predict_proba(x)[0][1]
+
+
+def data_normalize(x):
+    mean = np.sum(x, axis=0)
+    std = np.std(x, axis=0)
+    return ((x - mean) / (std)), mean, std
+
+
+def featuring(text):
+    # first word frequency research work
+    stop_words = set(stopwords.words('english'))
+    ps = PorterStemmer()
+    words = wordpunct_tokenize(text)
+    words = [ps.stem(w.lower()) for w in words if (len(w) > 1 and (w not in stop_words) and (not w.isnumeric()))]
+    words_freq = Counter(words)
+
+    words_freq_final = [
+        {'label': key, 'count': words_freq[key]} if key in words_freq.keys() else {'label': key, 'count': 0} for key in
+        tot_words]
+    # now Personality insight work IBM
+    personality_insights = PersonalityInsightsV3(version='2017-10-16',
+                                                 username='b8a711c2-1a50-4583-83bb-90a829987200',
+                                                 password='qhp2EfOBC6Zd',
+                                                 url='https://gateway.watsonplatform.net/personality-insights/api'
+                                                 )
+
+    profile = personality_insights.profile(content=text,
+                                           content_type='text/plain',
+                                           raw_scores=True,
+                                           consumption_preferences=True
+                                           )
+    # now sentiment analysis Google
+    client = language.LanguageServiceClient()
+    document = language.types.Document(content=text, type='PLAIN_TEXT')
+    response = client.analyze_sentiment(document=document, encoding_type='UTF32')
+    document_sentiment = {'positive': 0, 'neutral': response.document_sentiment.magnitude, 'negative': 0}
+    if response.document_sentiment.score > 0:
+        document_sentiment['positive'] = response.document_sentiment.score
+    else:
+        document_sentiment['negative'] = response.document_sentiment.score
+    response_object = {"sentiment": document_sentiment,
+                       "word_freq": words_freq_final,
+                       "ibm": profile
+                       }
+    df = make_df(response_object)
+    return df, response_object
+
+
+def predict_api(text):
+    df, response_object = featuring(text)
+    df = (df - mean) / std
+    lr_result = logistic_model(df)
+    knn_result = knn_model(df)
+    response_object["response"] = "predict"
+    response_object["predict"] = [{'label': 'KNN', 'value': knn_result},
+                                  {'label': 'Logistic Regression', 'value': lr_result}
+                                  ]
+    return response_object
+
+
+def make_df(response_object):
+    features = {}
+    # adding word frequency features
+    for in_word in response_object['word_freq']:
+        features[in_word['label']] = in_word['count']
+    # now adding google sentiment analysis features
+    features['sentiment_poitive'] = response_object['sentiment']['positive']
+    features['sentiment_negative'] = response_object['sentiment']['negative']
+    features['sentiment_neutral'] = response_object['sentiment']['neutral']
+    # now adding IBM Watson personality insight analysis features
+    for i in ['needs', 'values']:
+        for in_needs in response_object['ibm'][i]:
+            features[in_needs['name']] = in_needs['percentile']
+    for in_personality in response_object['ibm']['personality']:
+        for in_children in in_personality['children']:
+            features[in_children['name']] = in_children['percentile']
+    df = pd.DataFrame([features])
+    return df
+
+
+def train_api(text_list, result_list):
+    text_list = [i + i for i in text_list]
+    for i in range(0, len(text_list)):
+        if i == 0:
+            df, temp = featuring(text_list[i])
+        else:
+            df_temp, temp = featuring(text_list[i])
+            df = df.append(df_temp)
+    df, mean, std = data_normalize(df)
+    np.save('Mean_normalization_parameters.npy', mean)
+    np.save('Std_normalization_parameters.npy', std)
+    logistic_model(df, result_list, True)
+    knn_model(df, result_list, True)
 
 if __name__ == '__main__':
     app.run()
