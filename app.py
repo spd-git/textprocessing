@@ -720,6 +720,7 @@ def getdummuystats():
     }
     response = jsonify(response_object)
     response.status_code = 200
+    response.headers['Access-Control-Allow-Origin'] = '*'
     return response
 
 if __name__ == '__main__':
