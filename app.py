@@ -77,7 +77,7 @@ def endpoint():
     time3 = time.time()
     return response
 
-@app.route('/getdummuystats', methods=['GET'])
+@app.route('/getdummuystats', methods=['POST'])
 def getdummuystats():
     """
     Does Health Check
