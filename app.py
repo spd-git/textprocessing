@@ -17,7 +17,7 @@ import numpy as np
 import pickle
 import pandas as pd
 import os
-
+import operator
 
 app = Flask(__name__)
 
@@ -36,6 +36,8 @@ def load_huge_file():
     lr = pickle.load(open('Logistic_model_weights.sav', 'rb'))
     global knn
     knn = pickle.load(open('KNN_model_n_value.sav', 'rb'))
+    global document_df
+    document_df = pd.read_csv('Document_df.csv', header=0)
     # Do some things and assign data from a large file to loaded_data
     print("Model object loaded!")
     # objects = []
@@ -829,14 +831,58 @@ def featuring(text):
 def predict_api(text):
     df, response_object = featuring(text)
     df = (df - mean) / std
+    suggestion = positive_important_words(df)
     lr_result = logistic_model(df)
     knn_result = knn_model(df)
     response_object["response"] = "predict"
+    response_object["suggestion"] = suggestion
     response_object["predict"] = [{'label': 'KNN', 'value': knn_result},
                                   {'label': 'Logistic Regression', 'value': lr_result}
                                   ]
     return response_object
 
+def words_frequency(text):
+    stop_words = set(stopwords.words('english'))
+    ps = PorterStemmer()
+# tokenizing text
+    words = wordpunct_tokenize(text)
+# removing 1 character words and punctions and also words that are stop_words and are not numeric
+    words = [ps.stem(w.lower()) for w in words if (len(w)>1 and (w not in stop_words) and (not w.isnumeric()))]
+# finding word frequency
+    words_freq=Counter(words)
+    return words_freq
+
+def positive_important_words(data,to_pick=100):
+    strpos=''
+    strneg=''
+
+    for i in range(0,len(document_df)):
+        if document_df.iloc[i,2]==1:
+            strpos= strpos + document_df.iloc[i,1]
+        else:
+            strneg= strneg + document_df.iloc[i,1]
+    pos=words_frequency(strpos)
+    neg=words_frequency(strneg)
+    lr_temp = pickle.load(open('Logistic_model_weights.sav', 'rb'))
+    lr_coeff=lr_temp.coef_
+    word_indices=[]
+    for i,j in enumerate(data.columns):
+        if i>50:
+            if j not in ['sentiment_poitive','sentiment_negative','sentiment_neutral']:
+                word_indices.append((j,lr_coeff[0][i]))
+    word_theta_decreasing=sorted(word_indices,key=operator.itemgetter(1),reverse=True)
+    word_sel=word_theta_decreasing[:to_pick]
+    new=[]
+    for i in range(0,len(word_sel)):
+        if pos.get(word_sel[i][0]):
+            count_pos_list=pos[word_sel[i][0]]
+            if neg.get(word_sel[i][0]):
+                count_neg_list=neg[word_sel[i][0]]
+            else:
+                count_neg_list=0
+            new.append((word_sel[i][0],(word_sel[i][1])*(count_pos_list-count_neg_list)))
+    new=sorted(new,key=operator.itemgetter(1),reverse=True)
+    return new
 
 def make_df(response_object):
     features = {}
