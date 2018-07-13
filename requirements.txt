@@ -11,6 +11,7 @@ constantly==15.1.0
 cryptography==2.2.2
 dill==0.2.8.2
 Flask==1.0.2
+Flask-Cors==3.0.6
 future==0.16.0
 gapic-google-cloud-datastore-v1==0.15.3
 gapic-google-cloud-error-reporting-v1beta1==0.15.3
