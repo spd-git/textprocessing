@@ -18,6 +18,7 @@ import pickle
 import pandas as pd
 import os
 import operator
+import math
 
 app = Flask(__name__)
 
@@ -815,18 +816,17 @@ def featuring(text):
     client = language.LanguageServiceClient()
     document = language.types.Document(content=text, type='PLAIN_TEXT')
     response = client.analyze_sentiment(document=document, encoding_type='UTF32')
-    document_sentiment = {'positive': 0, 'neutral': response.document_sentiment.magnitude, 'negative': 0}
+    document_sentiment = {'positive': 0, 'neutral': math.tanh(response.document_sentiment.magnitude), 'negative': 0}
     if response.document_sentiment.score > 0:
-        document_sentiment['positive'] = response.document_sentiment.score
+        document_sentiment['positive'] = math.tanh(response.document_sentiment.score)
     else:
-        document_sentiment['negative'] = response.document_sentiment.score
+        document_sentiment['negative'] = math.tanh(response.document_sentiment.score)
     response_object = {"sentiment": document_sentiment,
                        "word_freq": words_freq_final,
                        "ibm": profile
                        }
     df = make_df(response_object)
     return df, response_object
-
 
 def predict_api(text):
     df, response_object = featuring(text)
@@ -882,6 +882,7 @@ def positive_important_words(data,to_pick=100):
                 count_neg_list=0
             new.append((word_sel[i][0],(word_sel[i][1])*(count_pos_list-count_neg_list)))
     new=sorted(new,key=operator.itemgetter(1),reverse=True)
+    new=[{'label':i[0],'score':i[1]}for i in new]
     return new
 
 def make_df(response_object):
